@@ -8,8 +8,8 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <application
         android:label="Compass"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@drawable/file_000000006b6081f8bbd8bebdeebeee4f"
+        android:roundIcon="@drawable/file_000000006b6081f8bbd8bebdeebeee4f"
         android:allowBackup="false"
         android:theme="@style/Theme.DirtyFrag">
 
