@@ -1,3 +1,4 @@
+
 import java.util.Properties
 
 plugins {
@@ -6,7 +7,19 @@ plugins {
 
 val signingProps = Properties()
 val signingPropsFile = rootProject.file("signing.properties")
-if (signingPropsFile.exists()) signingProps.load(signingPropsFile.inputStream())
+
+if (signingPropsFile.exists()) {
+    signingProps.load(signingPropsFile.inputStream())
+}
+
+val hasReleaseSigning = listOf(
+    "KEYSTORE_FILE",
+    "KEYSTORE_PASSWORD",
+    "KEY_ALIAS",
+    "KEY_PASSWORD"
+).all {
+    !signingProps.getProperty(it).isNullOrBlank()
+}
 
 android {
     namespace = "df.root"
@@ -29,11 +42,13 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file(signingProps.getProperty("KEYSTORE_FILE"))
-            storePassword = signingProps.getProperty("KEYSTORE_PASSWORD")
-            keyAlias = signingProps.getProperty("KEY_ALIAS")
-            keyPassword = signingProps.getProperty("KEY_PASSWORD")
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(signingProps.getProperty("KEYSTORE_FILE")!!)
+                storePassword = signingProps.getProperty("KEYSTORE_PASSWORD")
+                keyAlias = signingProps.getProperty("KEY_ALIAS")
+                keyPassword = signingProps.getProperty("KEY_PASSWORD")
+            }
         }
     }
 
@@ -42,11 +57,19 @@ android {
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
         }
+
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
@@ -75,7 +98,9 @@ android {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            output.outputFileName.set(output.versionName.map { vn -> "DFRoot_${vn}.apk" })
+            output.outputFileName.set(
+                output.versionName.map { vn -> "Compass_${vn}.apk" }
+            )
         }
     }
 }
