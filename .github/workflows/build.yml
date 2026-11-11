@@ -13,6 +13,7 @@ jobs:
   build-lkms:
     name: LKMs / ${{ matrix.kmi }}
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         kmi:
@@ -36,12 +37,14 @@ jobs:
         run: |
           cd lkm
           make -j$(nproc)
+
           llvm-objcopy --strip-unneeded \
             -R .comment -R .note.gnu.build-id -R .note.gnu.property \
             -R .note.Linux -R .note.GNU-stack \
             -R .BTF -R .BTF.base -R .llvm_addrsig \
             -R .hyp.text -R .hyp.bss -R .hyp.rodata -R .hyp.event_ids \
             -R .hyp.patchable_function_entries -R .hyp.data dfroot.ko
+
           mkdir -p $GITHUB_WORKSPACE/out
           cp dfroot.ko $GITHUB_WORKSPACE/out/dfroot-${{ matrix.kmi }}.ko
           make clean
@@ -53,35 +56,12 @@ jobs:
           path: out/dfroot-${{ matrix.kmi }}.ko
 
   build-dfroot:
+    name: Build Compass APK
     needs: build-lkms
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v7
-
-      - name: Validate signing config
-        if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
-        env:
-          KEYSTORE: ${{ secrets.KEYSTORE }}
-        run: |
-          if [ -z "$KEYSTORE" ]; then
-            echo "::error::KEYSTORE secret is missing"
-            exit 1
-          fi
-
-      - name: Create signing.properties
-        if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
-        env:
-          KEYSTORE: ${{ secrets.KEYSTORE }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          echo "KEYSTORE_FILE=../keystore.jks" > signing.properties
-          echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> signing.properties
-          echo "KEY_ALIAS=$KEY_ALIAS" >> signing.properties
-          echo "KEY_PASSWORD=$KEY_PASSWORD" >> signing.properties
-          echo "$KEYSTORE" | base64 --decode > keystore.jks
 
       - name: Download DF LKMs
         uses: actions/download-artifact@v7
@@ -97,25 +77,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Build DFRoot APK
+      - name: Build Compass APK
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ./gradlew :app:assembleDebug
-          else
-            ./gradlew :app:assembleRelease
-          fi
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug
 
       - name: Upload Compass APK
         uses: actions/upload-artifact@v7
         with:
           name: Compass
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           
